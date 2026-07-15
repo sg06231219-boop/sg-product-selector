@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SG选品助手 - 管理后台</title>
+<style>
+:root{
+--bg:#0a0e1a;--bg2:#121826;--card:#1a2236;--text:#e4e7ec;--text2:#9ca3af;
+--pri:#6366f1;--pri2:#8b5cf6;--acc:#00d4aa;--border:rgba(255,255,255,.08);--radius:12px;
+--shadow:0 4px 24px rgba(0,0,0,.3);--glass:rgba(26,34,54,.6);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{color:var(--pri2);text-decoration:none}
+/* NAV */
+.nav{background:var(--glass);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
+.nav-logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:bold}
+.nav-links{display:flex;gap:4px}
+.nav-links a{color:var(--text2);padding:6px 12px;border-radius:8px;font-size:13px;cursor:pointer}
+.nav-links a:hover,.nav-links a.active{color:var(--text);background:var(--card)}
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:24px}
+/* STATS CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.stat-card .icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px}
+.stat-card .num{font-size:32px;font-weight:800}
+.stat-card .label{font-size:13px;color:var(--text2);margin-top:4px}
+/* SECTION */
+.section{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.section-header h2{font-size:18px;font-weight:700}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--pri)}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none}
+.btn-danger{color:#ef4444;border-color:rgba(239,68,68,.3)}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+/* TABLE */
+.table{width:100%;border-collapse:collapse}
+.table th{padding:10px 14px;text-align:left;font-size:12px;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)}
+.table td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border)}
+.table tr:hover{background:var(--card)}
+.table .actions{display:flex;gap:6px}
+/* FORM */
+.form-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.form-overlay.show{display:flex}
+.form-modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;max-width:500px;width:100%;padding:24px}
+.form-modal h2{font-size:18px;margin-bottom:16px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--pri)}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+/* PAGINATION */
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:16px}
+.page-btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text2);font-size:12px;cursor:pointer}
+.page-btn.active{background:var(--pri);color:#fff}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+/* RESPONSIVE */
+@media(max-width:768px){
+.stats-grid{grid-template-columns:1fr 1fr}
+.table{font-size:12px}
+.table th,.table td{padding:6px 8px}
+}
+</style>
+</head>
+<body>
+<!-- NAV -->
+<nav class="nav">
+<div class="nav-logo">
+<div class="nav-logo-icon">SG</div>
+<span>SG选品助手 · 管理后台</span>
+</div>
+<div class="nav-links">
+<a href="/">← 返回首页</a>
+<a class="active" onclick="loadStats()">统计</a>
+<a onclick="loadProducts()">商品</a>
+<a onclick="loadVisitors()">访客</a>
+</div>
+</nav>
+
+<div class="container">
+<!-- 统计卡片 -->
+<div class="stats-grid" id="statsGrid">
+<div class="stat-card">
+<div class="icon" style="background:rgba(99,102,241,.15)">📦</div>
+<div class="num" id="statProducts">-</div>
+<div class="label">商品总数</div>
+</div>
+<div class="stat-card">
+<div class="icon" style="background:rgba(0,212,170,.15)">⭐</div>
+<div class="num" id="statFavs">-</div>
+<div class="label">收藏总数</div>
+</div>
+<div class="stat-card">
+<div class="icon" style="background:rgba(139,92,246,.15)">👁</div>
+<div class="num" id="statVisitors">-</div>
+<div class="label">访客数</div>
+</div>
+<div class="stat-card">
+<div class="icon" style="background:rgba(245,158,11,.15)">💰</div>
+<div class="num" id="statAvgPrice">-</div>
+<div class="label">平均价格(¥)</div>
+</div>
+</div>
+
+<!-- 平台分布 -->
+<div class="section">
+<div class="section-header"><h2>📊 平台分布</h2></div>
+<div id="platformStats" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+</div>
+
+<!-- 分类分布 -->
+<div class="section">
+<div class="section-header"><h2>📋 分类分布</h2></div>
+<div id="categoryStats" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+</div>
+
+<!-- 商品管理 -->
+<div class="section">
+<div class="section-header">
+<h2>📦 商品管理</h2>
+<button class="btn btn-primary" onclick="showAddForm()">+ 添加商品</button>
+</div>
+<div style="overflow-x:auto">
+<table class="table">
+<thead><tr><th>ID</th><th>名称</th><th>平台</th><th>分类</th><th>价格</th><th>销量</th><th>评分</th><th>操作</th></tr></thead>
+<tbody id="productTableBody"></tbody>
+</table>
+</div>
+<div class="pagination" id="adminPagination"></div>
+</div>
+
+<!-- 访客记录 -->
+<div class="section">
+<div class="section-header"><h2>👁 访客记录</h2></div>
+<div style="overflow-x:auto">
+<table class="table">
+<thead><tr><th>ID</th><th>IP</th><th>User-Agent</th><th>路径</th><th>时间</th></tr></thead>
+<tbody id="visitorTableBody"></tbody>
+</table>
+</div>
+<div class="pagination" id="visitorPagination"></div>
+</div>
+</div>
+
+<!-- 添加/编辑表单 -->
+<div class="form-overlay" id="formOverlay" onclick="if(event.target===this)closeForm()">
+<div class="form-modal">
+<h2 id="formTitle">添加商品</h2>
+<input type="hidden" id="editId">
+<div class="form-group"><label>商品名称</label><input type="text" id="fName" placeholder="商品名称"></div>
+<div class="form-group"><label>平台</label><select id="fPlatform"><option>淘宝</option><option>京东</option><option>拼多多</option><option>闲鱼</option><option>1688</option><option>抖音</option></select></div>
+<div class="form-group"><label>分类</label><select id="fCategory"><option>电子数码</option><option>服装鞋帽</option><option>家居生活</option><option>食品零食</option><option>美妆个护</option><option>手机数码</option><option>母婴用品</option><option>运动户外</option></select></div>
+<div class="form-group"><label>价格</label><input type="number" id="fPrice" placeholder="0.00" step="0.1"></div>
+<div class="form-group"><label>原价</label><input type="number" id="fOriginalPrice" placeholder="0.00" step="0.1"></div>
+<div class="form-group"><label>销量</label><input type="number" id="fSales" placeholder="0"></div>
+<div class="form-group"><label>评分(1-5)</label><input type="number" id="fRating" placeholder="5.0" step="0.1" min="1" max="5"></div>
+<div class="form-group"><label>卖家</label><input type="text" id="fSeller" placeholder="卖家名称"></div>
+<div class="form-group"><label>链接</label><input type="text" id="fUrl" placeholder="https://"></div>
+<div class="form-actions">
+<button class="btn" onclick="closeForm()">取消</button>
+<button class="btn btn-primary" onclick="saveProduct()">保存</button>
+</div>
+</div>
+</div>
+
+<script>
+let adminPage=1,visitorPage=1;
+const PAGE_SIZE=20;
+
+async function loadStats(){
+let res=await fetch("/api/v1/stats");
+let json=await res.json();
+if(json.code!==0)return;
+let d=json.data;
+document.getElementById("statProducts").textContent=d.product_count;
+document.getElementById("statFavs").textContent=d.favorite_count;
+document.getElementById("statVisitors").textContent=d.visitor_count;
+document.getElementById("statAvgPrice").textContent=d.avg_price;
+// 平台分布
+let ps=document.getElementById("platformStats");
+ps.innerHTML=Object.entries(d.platform_stats).map(([k,v])=>
+`<div style="background:var(--card);padding:12px 20px;border-radius:10px;border:1px solid var(--border)"><div style="font-size:13px;color:var(--text2)">${k}</div><div style="font-size:20px;font-weight:700">${v}</div></div>`
+).join("");
+// 分类分布
+let cs=document.getElementById("categoryStats");
+cs.innerHTML=Object.entries(d.category_stats).map(([k,v])=>
+`<div style="background:var(--card);padding:12px 20px;border-radius:10px;border:1px solid var(--border)"><div style="font-size:13px;color:var(--text2)">${k}</div><div style="font-size:20px;font-weight:700">${v}</div></div>`
+).join("");
+}
+
+async function loadProducts(){
+let res=await fetch(`/api/v1/admin/products?page=${adminPage}&page_size=${PAGE_SIZE}`);
+let json=await res.json();
+if(json.code!==0)return;
+let body=document.getElementById("productTableBody");
+body.innerHTML=json.data.list.map(p=>`<tr>
+<td>${p.id}</td>
+<td>${p.name}</td>
+<td>${p.platform}</td>
+<td>${p.category}</td>
+<td>¥${p.price}</td>
+<td>${p.sales_count}</td>
+<td>${p.rating}</td>
+<td class="actions">
+<button class="btn" onclick="showEditForm(${p.id})">编辑</button>
+<button class="btn btn-danger" onclick="deleteProduct(${p.id})">删除</button>
+</td>
+</tr>`).join("");
+// 分页
+let totalPages=Math.ceil(json.data.total/PAGE_SIZE);
+let p=document.getElementById("adminPagination");
+p.innerHTML="";
+for(let i=1;i<=Math.min(totalPages,10);i++){
+p.innerHTML+=`<button class="page-btn ${i===adminPage?'active':''}" onclick="adminPage=${i};loadProducts()">${i}</button>`;
+}
+}
+
+async function loadVisitors(){
+let res=await fetch(`/api/v1/admin/visitors?page=${visitorPage}&page_size=${PAGE_SIZE}`);
+let json=await res.json();
+if(json.code!==0)return;
+let body=document.getElementById("visitorTableBody");
+body.innerHTML=json.data.list.map(v=>`<tr>
+<td>${v.id}</td>
+<td>${v.ip}</td>
+<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.ua}</td>
+<td>${v.path}</td>
+<td>${v.created_at}</td>
+</tr>`).join("");
+let totalPages=Math.ceil(json.data.total/PAGE_SIZE);
+let p=document.getElementById("visitorPagination");
+p.innerHTML="";
+for(let i=1;i<=Math.min(totalPages,10);i++){
+p.innerHTML+=`<button class="page-btn ${i===visitorPage?'active':''}" onclick="visitorPage=${i};loadVisitors()">${i}</button>`;
+}
+}
+
+function showAddForm(){
+document.getElementById("formTitle").textContent="添加商品";
+document.getElementById("editId").value="";
+document.querySelectorAll("#formOverlay input, #formOverlay select").forEach(el=>{if(el.type!=="hidden")el.value=""});
+document.getElementById("formOverlay").classList.add("show");
+}
+
+async function showEditForm(id){
+let res=await fetch(`/api/v1/products/${id}`);
+let json=await res.json();
+if(json.code!==0)return;
+let p=json.data;
+document.getElementById("formTitle").textContent="编辑商品";
+document.getElementById("editId").value=p.id;
+document.getElementById("fName").value=p.name;
+document.getElementById("fPlatform").value=p.platform;
+document.getElementById("fCategory").value=p.category;
+document.getElementById("fPrice").value=p.price;
+document.getElementById("fOriginalPrice").value=p.original_price;
+document.getElementById("fSales").value=p.sales_count;
+document.getElementById("fRating").value=p.rating;
+document.getElementById("fSeller").value=p.seller;
+document.getElementById("fUrl").value=p.url;
+document.getElementById("formOverlay").classList.add("show");
+}
+
+function closeForm(){document.getElementById("formOverlay").classList.remove("show")}
+
+async function saveProduct(){
+let id=document.getElementById("editId").value;
+let body={
+name:document.getElementById("fName").value,
+platform:document.getElementById("fPlatform").value,
+category:document.getElementById("fCategory").value,
+price:parseFloat(document.getElementById("fPrice").value)||0,
+original_price:parseFloat(document.getElementById("fOriginalPrice").value)||0,
+sales_count:parseInt(document.getElementById("fSales").value)||0,
+rating:parseFloat(document.getElementById("fRating").value)||5.0,
+seller:document.getElementById("fSeller").value,
+url:document.getElementById("fUrl").value
+};
+let method=id?"PUT":"POST";
+let url=id?`/api/v1/admin/products/${id}`:"/api/v1/admin/products";
+let res=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+let json=await res.json();
+if(json.code===0){
+closeForm();
+loadProducts();
+loadStats();
+alert(id?"更新成功":"添加成功");
+}else{
+alert(json.msg||"操作失败");
+}
+}
+
+async function deleteProduct(id){
+if(!confirm("确认删除该商品？"))return;
+let res=await fetch(`/api/v1/admin/products/${id}`,{method:"DELETE"});
+let json=await res.json();
+if(json.code===0){loadProducts();loadStats();alert("删除成功")}
+else{alert("删除失败")}
+}
+
+// 初始化
+loadStats();
+loadProducts();
+loadVisitors();
+</script>
+</body>
+</html>
