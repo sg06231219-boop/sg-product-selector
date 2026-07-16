@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SG选品助手 - 多平台智能选品</title>
 <meta name="theme-color" content="#6366f1">
-<link rel="manifest" href="/manifest.json">
+<!-- manifest removed: no manifest.json deployed -->
 <style>
 :root{
 --bg:#0a0e1a;--bg2:#121826;--card:#1a2236;--text:#e4e7ec;--text2:#9ca3af;
@@ -152,6 +152,7 @@ canvas.chart-canvas{width:100%;height:200px;display:block}
 .trend-score-item{flex:1;background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
 .trend-score-num{font-size:28px;font-weight:800}
 .trend-score-label{font-size:12px;color:var(--text2);margin-top:4px}
+.trend-score-text{font-size:16px;font-weight:700;padding:4px 0}
 /* FAVORITES MODAL */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
@@ -187,6 +188,9 @@ canvas.chart-canvas{width:100%;height:200px;display:block}
 .pie-chart-container{flex-direction:column}
 }
 .loading{text-align:center;padding:40px;color:var(--text2)}
+.skeleton-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);height:280px;overflow:hidden;position:relative}
+.skeleton-card::after{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 .empty{text-align:center;padding:40px;color:var(--text2)}
 .empty-icon{font-size:48px;margin-bottom:12px}
 </style>
@@ -220,7 +224,7 @@ canvas.chart-canvas{width:100%;height:200px;display:block}
 <button onclick="heroSearch()">🔍 搜索比价</button>
 </div>
 <div class="hero-stats">
-<div class="hero-stat"><div class="hero-stat-num" id="statProducts">300+</div><div class="hero-stat-label">商品数据</div></div>
+<div class="hero-stat"><div class="hero-stat-num" id="statProducts">288+</div><div class="hero-stat-label">商品数据</div></div>
 <div class="hero-stat"><div class="hero-stat-num">6</div><div class="hero-stat-label">电商平台</div></div>
 <div class="hero-stat"><div class="hero-stat-num">8</div><div class="hero-stat-label">商品分类</div></div>
 </div>
@@ -297,7 +301,7 @@ canvas.chart-canvas{width:100%;height:200px;display:block}
 <option value="0.02">拼多多 (2%)</option>
 <option value="0.01">闲鱼 (1%)</option>
 <option value="0.005">1688 (0.5%)</option>
-<option value="0.05">抖音 (5%)</option>
+<option value="0.05">抖音电商 (5%)</option>
 </select>
 </div>
 <div class="calc-field">
@@ -336,15 +340,15 @@ canvas.chart-canvas{width:100%;height:200px;display:block}
 
 <!-- FOOTER -->
 <div class="footer">
-<p>SG选品助手 v1.1.0 | 专为闲鱼卖货选品设计</p>
-<p style="margin-top:8px">与 <a href="#">SG建站工具</a> 联动 · 数据仅供参考，实际以各平台为准</p>
+<p>SG选品助手 v1.3.0 | 专为闲鱼卖货选品设计</p>
+<p style="margin-top:8px">与 <a href="#">SG建站工具</a> 联动 · <a href="/admin">管理后台</a> · 数据仅供参考，实际以各平台为准</p>
 </div>
 
 <script>
 // ======== 全局状态 ========
 const PLATFORMS=["淘宝","京东","拼多多","闲鱼","1688","抖音电商"];
 const CATEGORIES=["电子数码","服装鞋帽","家居生活","食品零食","美妆个护","手机数码","母婴用品","运动户外"];
-const PLATFORM_COLORS={"淘宝":"#ff4400","京东":"#e1251b","拼多多":"#e02e24","闲鱼":"#ffdc34","1688":"#ff7300","抖音":"#000000"};
+const PLATFORM_COLORS={"淘宝":"#ff4400","京东":"#e1251b","拼多多":"#e02e24","闲鱼":"#ffdc34","1688":"#ff7300","抖音电商":"#000000"};
 let currentPlatform="全部",currentCategory="全部",currentPage=1,currentPageSize=20;
 let hotPlatform="全部";
 
@@ -401,6 +405,7 @@ if(tab==="hot")loadHot();
 }
 
 function goHome(){switchTab("hall");window.scrollTo({top:0,behavior:"smooth"})}
+function productClick(url,id){if(url&&url.indexOf("example.com")<0){window.open(url,"_blank")}else{toggleFav(id)}}
 
 // ======== 选品大厅 ========
 async function loadProducts(){
@@ -426,10 +431,10 @@ function renderProductCard(p){
 let bgColor=PLATFORM_COLORS[p.platform]||"#666";
 let profitClass=p.profit_margin>15?"profit":""+(p.profit_margin>5?"":"negative");
 let favClass=isFaved(p.id)?"faved":"";
-return `<div class="product-card" onclick="window.open('${p.url}','_blank')">
+return `<div class="product-card" onclick="productClick('${p.url}','${p.id}')">
 <div class="fav-icon ${favClass}" onclick="event.stopPropagation();toggleFav(${p.id})">${favClass?'♥':'♡'}</div>
 <span class="product-platform" style="background:${bgColor}cc">${p.platform}</span>
-<div class="product-img" style="background:linear-gradient(135deg,#${randomColor(p.name)},#${randomColor(p.platform)})"></div>
+<div class="product-img" style="background:linear-gradient(135deg,#${randomColor(p.name)},#${randomColor(p.platform)});display:flex;align-items:center;justify-content:center;font-size:48px">${getCatEmoji(p.category)}</div>
 <div class="product-info">
 <div class="product-name">${p.name}</div>
 <div class="product-price">
@@ -448,6 +453,7 @@ return `<div class="product-card" onclick="window.open('${p.url}','_blank')">
 function randomColor(s){let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);return (h&0xFFFFFF).toString(16).padStart(6,'0').slice(0,6)}
 
 function formatSales(n){return n>10000?(n/10000).toFixed(1)+"万":n}
+function getCatEmoji(cat){const m={"电子数码":"📱","服装鞋帽":"👕","家居生活":"🏠","食品零食":"🍪","美妆个护":"💄","手机数码":"📱","母婴用品":"👶","运动户外":"⚽"};return m[cat]||"📦"}
 
 function renderPagination(total,totalPages){
 let p=document.getElementById("pagination");if(totalPages<=1){p.innerHTML="";return}
@@ -589,7 +595,7 @@ let html=`<div class="trend-section">
 <div class="trend-score-item"><div class="trend-score-num" style="color:${d.trend_score>75?'var(--acc)':d.trend_score>60?'#f59e0b':'#ef4444'}">${d.trend_score}</div><div class="trend-score-label">趋势评分</div></div>
 <div class="trend-score-item"><div class="trend-score-num" style="color:${d.price_change_pct>0?'#ef4444':'var(--acc)'}">${d.price_change_pct>0?'+':''}${d.price_change_pct}%</div><div class="trend-score-label">价格变化</div></div>
 <div class="trend-score-item"><div class="trend-score-num" style="color:${d.sales_change_pct>0?'var(--acc)':'#ef4444'}">${d.sales_change_pct>0?'+':''}${d.sales_change_pct}%</div><div class="trend-score-label">销量变化</div></div>
-<div class="trend-score-item"><div class="trend-score-num" style="color:var(--pri2)">${d.recommendation}</div><div class="trend-score-label">建议</div></div>
+<div class="trend-score-item"><div class="trend-score-text" style="color:var(--pri2);font-size:16px;font-weight:700">${d.recommendation}</div><div class="trend-score-label">建议</div></div>
 </div>
 <div class="trend-chart"><h3>📊 30天价格走势</h3><canvas class="chart-canvas" id="priceCanvas"></canvas></div>
 <div class="trend-chart"><h3>📦 30天销量趋势</h3><canvas class="chart-canvas" id="salesCanvas"></canvas></div>
@@ -667,7 +673,7 @@ if(json.code===0)items.push(json.data);
 if(items.length===0){list.innerHTML='<div class="empty"><div class="empty-icon">⭐</div>收藏数据不存在</div>'}
 else{
 list.innerHTML=items.map(p=>`<div class="fav-list-item">
-<div style="width:50px;height:50px;border-radius:8px;background:linear-gradient(135deg,#${randomColor(p.name)},#${randomColor(p.platform)})"></div>
+<div style="width:50px;height:50px;border-radius:8px;background:linear-gradient(135deg,#${randomColor(p.name)},#${randomColor(p.platform)});display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>
 <div class="info"><div class="name">${p.name}</div><div class="price">¥${p.price} · ${p.platform}</div></div>
 <button class="remove" onclick="removeFav(${p.id})">移除</button>
 </div>`).join("");

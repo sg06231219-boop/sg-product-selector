@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-"""SG选品助手 v1.1.0 - 多平台智能选品工具"""
+"""SG选品助手 v1.3.0 - 多平台智能选品工具"""
 import os, json, sqlite3, csv, io, random
 from datetime import datetime, timedelta
 from pathlib import Path
 from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 BASE = Path(__file__).parent
 DB_PATH = BASE / "data" / "selector.db"
 STATIC_DIR = BASE / "static"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 app = FastAPI(title="SG选品助手", version=VERSION, docs_url="/docs", redoc_url="/redoc")
 
@@ -112,25 +113,32 @@ def startup():
 async def track(request: Request, call_next):
     path = request.url.path
     if not path.startswith("/api") and not path.startswith("/static"):
+        conn = None
         try:
             conn = get_db()
             conn.execute("INSERT INTO visitors(ip,ua,path,created_at) VALUES(?,?,?,?)",
                          (request.client.host, request.headers.get("user-agent","")[:200], path, datetime.now().isoformat()))
             conn.commit()
-            conn.close()
         except: pass
+        finally:
+            if conn: conn.close()
     return await call_next(request)
 
 # ======== 页面 ========
 @app.get("/", response_class=HTMLResponse)
 def index():
-    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(html)
+    html = (STATIC_DIR / "index.html").read_bytes().decode("utf-8")
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin():
-    html = (STATIC_DIR / "admin.html").read_text(encoding="utf-8")
-    return HTMLResponse(html)
+    html = (STATIC_DIR / "admin.html").read_bytes().decode("utf-8")
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+
+@app.get("/admin.html", response_class=HTMLResponse)
+def admin_html():
+    html = (STATIC_DIR / "admin.html").read_bytes().decode("utf-8")
+    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
 
 # ======== 公共API ========
 @app.get("/api/v1/health")
@@ -167,6 +175,7 @@ def categories():
 @app.get("/api/v1/products")
 def products(platform: str = Query(""), category: str = Query(""), keyword: str = Query(""),
              sort: str = Query("sales"), page: int = Query(1), page_size: int = Query(20)):
+    page_size = min(page_size, 100)  # ??100?/?
     conn = get_db(); c = conn.cursor()
     sql = "SELECT * FROM products WHERE 1=1"
     args = []
@@ -208,7 +217,8 @@ def hot(platform: str = Query(""), category: str = Query(""), limit: int = Query
     # 加 rank 和 trend_direction
     for i, r in enumerate(rows):
         r["rank"] = i + 1
-        td = random.choice(["up","up","up","flat","down"])
+        # ????id?????????
+        td = ["up","up","up","flat","down"][r["id"] % 5]
         r["trend_direction"] = td
     return ok(rows)
 
@@ -266,7 +276,10 @@ def trends(keyword: str = Query(""), days: int = Query(30)):
     conn = get_db(); c = conn.cursor()
     price_trend = []
     sales_trend = []
-    trend_score = round(random.uniform(55, 92), 1)
+    # ?????hash?????????????????
+    import hashlib
+    seed = int(hashlib.md5(keyword.encode()).hexdigest()[:8], 16)
+    trend_score = round(55 + (seed % 370) / 10, 1)  # 55.0 - 92.0
     if keyword:
         row = c.execute("SELECT id,name FROM products WHERE name LIKE ? LIMIT 1", (f"%{keyword}%",)).fetchone()
         if row:
@@ -382,6 +395,9 @@ def export_csv(platform: str = Query(""), category: str = Query(""), sort: str =
                     headers={"Content-Disposition":"attachment; filename=products.csv"})
 
 # ======== 管理后台API ========
+# Admin??????ADMIN_TOKEN?????????????
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
 @app.get("/api/v1/admin/stats")
 def admin_stats():
     conn = get_db(); c = conn.cursor()
@@ -402,6 +418,7 @@ def admin_stats():
 
 @app.get("/api/v1/admin/products")
 def admin_products(page: int = Query(1), page_size: int = Query(20)):
+    page_size = min(page_size, 100)  # ??100?/?
     conn = get_db(); c = conn.cursor()
     total = c.execute("SELECT COUNT(*) FROM products").fetchone()[0]
     offset = (page-1)*page_size
@@ -412,6 +429,7 @@ def admin_products(page: int = Query(1), page_size: int = Query(20)):
 
 @app.get("/api/v1/admin/visitors")
 def admin_visitors(page: int = Query(1), page_size: int = Query(20)):
+    page_size = min(page_size, 100)  # ??100?/?
     conn = get_db(); c = conn.cursor()
     total = c.execute("SELECT COUNT(*) FROM visitors").fetchone()[0]
     offset = (page-1)*page_size
